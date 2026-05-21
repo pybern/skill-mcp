@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Palette — warm day-mode */
+  --color-cream: #fbf7f0;
+  --color-paper: #ffffff;
+  --color-ink: #2b2620;
+  --color-ink-soft: #6b6258;
+  --color-rule: #e9e1d3;
+  --color-mcp: #c97b5a;
+  --color-mcp-soft: #f3dccf;
+  --color-skill: #7a8b6f;
+  --color-skill-soft: #dfe5d6;
+  --color-accent: #d9a441;
+  --color-accent-soft: #f5e3b8;
+
+  /* Font tokens — wired to next/font CSS variables in layout.tsx */
+  --font-display: var(--font-fraunces), ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-scribble: var(--font-caveat), "Comic Sans MS", cursive;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html,
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Scroll-snap deck container.
+   Used on <main> in page.tsx; each <section> child snaps to viewport. */
+.snap-deck {
+  scroll-snap-type: y mandatory;
+  overscroll-behavior-y: contain;
+  /* Hide scrollbar but keep functionality. */
+  scrollbar-width: none;
+}
+.snap-deck::-webkit-scrollbar {
+  display: none;
+}
+.snap-deck > section {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+@media (max-width: 900px) {
+  /* On small screens, relax mandatory snap so long slides can scroll. */
+  .snap-deck {
+    scroll-snap-type: y proximity;
+  }
+}
+
+/* Subtle paper texture overlay (very light, optional) */
+.paper-grain {
+  background-image:
+    radial-gradient(rgba(43, 38, 32, 0.025) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+/* Utility: blinking caret (used by typewriter) */
+@keyframes caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.caret {
+  display: inline-block;
+  width: 0.5ch;
+  margin-left: 2px;
+  background: currentColor;
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .caret { animation: none; opacity: 1; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
