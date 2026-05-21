@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Wordmark } from "@/components/Wordmark";
 import { ProgressRail } from "@/components/ProgressRail";
 import { Hero } from "@/components/slides/Hero";
@@ -29,13 +30,21 @@ const SECTIONS = [
 ];
 
 export default function Home() {
+  useEffect(() => {
+    // Make the snap-deck container the active scroll target so keyboard
+    // navigation (PageDown / ArrowDown) works without an initial click.
+    const deck = document.getElementById("deck");
+    deck?.focus({ preventScroll: true });
+  }, []);
+
   return (
     <>
       <Wordmark />
       <ProgressRail ids={SECTIONS} containerId="deck" />
       <main
         id="deck"
-        className="snap-deck h-dvh w-full overflow-y-scroll bg-cream"
+        tabIndex={-1}
+        className="snap-deck h-dvh w-full overflow-y-scroll bg-cream outline-none"
       >
         <Hero />
         <WhatIsMcp />
