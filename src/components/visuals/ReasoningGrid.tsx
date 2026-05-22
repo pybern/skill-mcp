@@ -132,10 +132,17 @@ export function ReasoningGrid() {
             })}
           </div>
 
-          {/* Connecting lines (SVG overlay) */}
+          {/* Connecting lines (SVG overlay).
+             We pin width/height inline because, without them, Chrome
+             gives the <svg> its viewBox-derived intrinsic size (1:1
+             square) instead of stretching to fill the absolutely
+             positioned box — which made the dashed connectors leak far
+             below the card. */}
           <svg
             aria-hidden
             className="absolute inset-0 pointer-events-none"
+            width="100%"
+            height="100%"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
           >
