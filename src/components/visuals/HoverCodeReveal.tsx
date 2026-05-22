@@ -35,6 +35,7 @@ function useIsBrowser() {
 
 type Tok = ReactNode;
 const T = {
+  // ── Generic code tokens
   kw: (s: string): Tok => <span className="text-mcp">{s}</span>,
   str: (s: string): Tok => <span className="text-skill">{s}</span>,
   num: (s: string): Tok => <span className="text-accent">{s}</span>,
@@ -43,6 +44,20 @@ const T = {
     <span className="text-ink-soft/80 italic">{s}</span>
   ),
   p: (s: string): Tok => <span className="text-ink-soft">{s}</span>,
+  // ── Markdown / YAML-frontmatter tokens
+  fm: (s: string): Tok => <span className="text-ink-soft/60">{s}</span>, // --- delimiter
+  yk: (s: string): Tok => <span className="text-mcp">{s}</span>, // yaml key
+  yv: (s: string): Tok => <span className="text-skill">{s}</span>, // yaml value
+  h: (s: string): Tok => (
+    <span className="text-mcp font-semibold">{s}</span>
+  ), // markdown heading line
+  h2: (s: string): Tok => (
+    <span className="text-ink font-semibold">{s}</span>
+  ), // markdown subheading
+  li: (s: string): Tok => <span className="text-ink-soft">{s}</span>, // list bullet text
+  b: (s: string): Tok => (
+    <span className="text-ink font-semibold">{s}</span>
+  ), // **bold** inline
 };
 
 const L = (...tokens: Tok[]): Tok => (
@@ -62,7 +77,7 @@ const C = (tokens: Tok, note?: string): CodeLine => ({ tokens, note });
 export type CodeLine = { tokens: Tok; note?: string };
 
 export type Snippet = {
-  lang: "TypeScript" | "Python";
+  lang: "TypeScript" | "Python" | "Markdown";
   filename: string;
   lines: CodeLine[];
 };
@@ -70,7 +85,8 @@ export type Snippet = {
 export type CodeReveal = {
   title: string;
   intro: string;
-  snippets: [Snippet, Snippet];
+  /** One or more snippets. When >1, the modal renders tabs; the small popover stacks them. */
+  snippets: Snippet[];
 };
 
 export const MCP_REVEAL: CodeReveal = {
@@ -180,89 +196,108 @@ export const MCP_REVEAL: CodeReveal = {
   ],
 };
 
+// A spec-compliant Anthropic SKILL.md: YAML frontmatter (name + description)
+// followed by markdown prose the agent reasons over.
 export const SKILL_REVEAL: CodeReveal = {
-  title: "Skills in code",
+  title: "SKILL.md",
   intro:
-    "Point the agent at a SKILLS.md file. It reads the playbook first, then decides what to do with whatever the MCPs return.",
+    "A skill is a plain markdown file with YAML frontmatter. The agent reads the description to decide when to load it, then reasons over the body to decide what to do.",
   snippets: [
     {
-      lang: "TypeScript",
-      filename: "agent.ts",
+      lang: "Markdown",
+      filename: "skills/booking-rooms/SKILL.md",
       lines: [
+        // ── Frontmatter ───────────────────────────────────────────────
+        C(L(T.fm("---")), "YAML frontmatter — the machine-readable header"),
+        C(
+          L(T.yk("name"), T.p(": "), T.yv("booking-rooms")),
+          "unique skill id (kebab-case, ≤64 chars)",
+        ),
         C(
           L(
-            T.kw("import"),
-            T.p(" { Agent } "),
-            T.kw("from"),
-            T.p(" "),
-            T.str('"@anthropic-ai/agent-sdk"'),
-            T.p(";"),
+            T.yk("description"),
+            T.p(": "),
+            T.yv(
+              "Use whenever the user wants to book, reserve, or find a meeting room.",
+            ),
           ),
-          "an SDK that knows how to load skills",
+          "the agent uses this to decide WHEN to load the skill",
+        ),
+        C(L(T.fm("---"))),
+        C(L()),
+        // ── Body: title + intro ───────────────────────────────────────
+        C(
+          L(T.h("# Booking rooms")),
+          "everything below is prose the agent reasons over",
         ),
         C(L()),
-        C(
-          L(
-            T.kw("const"),
-            T.p(" agent "),
-            T.p("= "),
-            T.kw("new"),
-            T.p(" "),
-            T.fn("Agent"),
-            T.p("({"),
-          ),
-          "spin up an agent",
-        ),
-        C(L(T.p("  model: "), T.str('"claude-sonnet-4"'), T.p(","))),
-        C(
-          L(T.p("  skills: ["), T.str('"./skills/booking-rooms.md"'), T.p("],")),
-          "point it at your SKILLS.md playbook",
-        ),
-        C(L(T.p("});"))),
+        C(L(T.p("How we like things around here."))),
         C(L()),
+        // ── Must-haves ────────────────────────────────────────────────
+        C(
+          L(T.h2("## Must-haves")),
+          "hard constraints — break these and the answer is wrong",
+        ),
         C(
           L(
-            T.kw("await"),
-            T.p(" agent."),
-            T.fn("run"),
-            T.p("("),
-            T.str('"Find a room for 4 at 2pm."'),
-            T.p(");"),
+            T.li("- If any attendee is "),
+            T.b("**remote**"),
+            T.li(", the room "),
+            T.b("**must**"),
+            T.li(" have video conferencing."),
           ),
-          "agent reads the skill, calls MCPs, then replies",
         ),
-      ],
-    },
-    {
-      lang: "Python",
-      filename: "agent.py",
-      lines: [
+        C(L(T.li("- Capacity must fit the requested party size."))),
+        C(L()),
+        // ── Defaults ──────────────────────────────────────────────────
         C(
-          L(T.kw("from"), T.p(" anthropic "), T.kw("import"), T.p(" Agent")),
-          "an SDK that knows how to load skills",
+          L(T.h2("## Defaults")),
+          "what to assume when the user didn't say",
+        ),
+        C(
+          L(
+            T.li("- Prefer "),
+            T.b("**floor 3**"),
+            T.li(" (closest to the team)."),
+          ),
+        ),
+        C(L(T.li("- Default meeting length is 60 minutes if unspecified."))),
+        C(L()),
+        // ── Preferences ───────────────────────────────────────────────
+        C(
+          L(T.h2("## Preferences")),
+          "tie-breakers among otherwise valid options",
+        ),
+        C(
+          L(
+            T.li("- Prefer the "),
+            T.b("**smallest**"),
+            T.li(" room that fits — leave big rooms for big meetings."),
+          ),
         ),
         C(L()),
-        C(L(T.p("agent = "), T.fn("Agent"), T.p("(")), "spin up an agent"),
-        C(L(T.p("    model="), T.str('"claude-sonnet-4"'), T.p(","))),
+        // ── Guardrails ────────────────────────────────────────────────
         C(
-          L(
-            T.p("    skills=["),
-            T.str('"./skills/booking-rooms.md"'),
-            T.p("],"),
-          ),
-          "point it at your SKILLS.md playbook",
+          L(T.h2("## Guardrails")),
+          "when to PAUSE and confirm rather than act",
         ),
-        C(L(T.p(")"))),
-        C(L()),
         C(
           L(
-            T.p("agent."),
-            T.fn("run"),
-            T.p("("),
-            T.str('"Find a room for 4 at 2pm."'),
-            T.p(")"),
+            T.li("- "),
+            T.b("**Confirm**"),
+            T.li(" before booking anything over $50/hr."),
           ),
-          "agent reads the skill, calls MCPs, then replies",
+        ),
+        C(L(T.li("- Ask before inviting people outside the company."))),
+        C(L()),
+        // ── Output ────────────────────────────────────────────────────
+        C(L(T.h2("## Output")), "the shape of a good answer"),
+        C(
+          L(
+            T.li(
+              "Reply with the chosen room, the rationale (which rules applied), and a one-line confirmation diff for the user to approve.",
+            ),
+          ),
         ),
       ],
     },
@@ -449,7 +484,9 @@ function CodeCard({ snippet }: { snippet: Snippet }) {
   const langTint =
     snippet.lang === "TypeScript"
       ? "bg-mcp-soft text-mcp"
-      : "bg-skill-soft text-skill";
+      : snippet.lang === "Python"
+      ? "bg-skill-soft text-skill"
+      : /* Markdown */ "bg-accent-soft text-accent";
 
   return (
     <span className="block overflow-hidden rounded-lg border border-rule bg-cream/60">
@@ -473,7 +510,7 @@ function CodeCard({ snippet }: { snippet: Snippet }) {
           {snippet.lang}
         </span>
       </span>
-      <span className="block overflow-x-auto px-3 py-2.5">
+      <span className="relative block max-h-[260px] overflow-auto px-3 py-2.5">
         <span
           className="block whitespace-pre text-ink"
           style={{
@@ -492,6 +529,15 @@ function CodeCard({ snippet }: { snippet: Snippet }) {
             </span>
           ))}
         </span>
+        {/* soft fade hint that there's more to scroll */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 block h-8"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(251,247,240,0), var(--color-cream))",
+          }}
+        />
       </span>
     </span>
   );
@@ -552,7 +598,9 @@ function ModalSurface({
   const accentText = accent === "mcp" ? "text-mcp" : "text-skill";
   const accentBg = accent === "mcp" ? "bg-mcp" : "bg-skill";
   const accentSoft = accent === "mcp" ? "bg-mcp-soft" : "bg-skill-soft";
-  const snippet = reveal.snippets[tab];
+  const safeTab = Math.min(tab, reveal.snippets.length - 1) as 0 | 1;
+  const snippet = reveal.snippets[safeTab];
+  const showTabs = reveal.snippets.length > 1;
 
   return (
     <motion.div
@@ -627,30 +675,43 @@ function ModalSurface({
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs (or single-snippet header strip) */}
         <div className="flex items-center gap-1 border-b border-rule bg-cream/40 px-4 py-2">
-          {reveal.snippets.map((s, i) => {
-            const active = i === tab;
-            return (
-              <button
-                key={s.lang}
-                type="button"
-                onClick={() => setTab(i as 0 | 1)}
-                className={`relative rounded-full px-3 py-1 text-xs transition ${
-                  active
-                    ? `${accentSoft} ${accentText}`
-                    : "text-ink-soft hover:text-ink"
-                }`}
-                style={{
-                  fontFamily:
-                    "var(--font-jetbrains), ui-monospace, monospace",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                {s.lang.toLowerCase()}
-              </button>
-            );
-          })}
+          {showTabs ? (
+            reveal.snippets.map((s, i) => {
+              const active = i === safeTab;
+              return (
+                <button
+                  key={s.lang}
+                  type="button"
+                  onClick={() => setTab(i as 0 | 1)}
+                  className={`relative rounded-full px-3 py-1 text-xs transition ${
+                    active
+                      ? `${accentSoft} ${accentText}`
+                      : "text-ink-soft hover:text-ink"
+                  }`}
+                  style={{
+                    fontFamily:
+                      "var(--font-jetbrains), ui-monospace, monospace",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  {s.lang.toLowerCase()}
+                </button>
+              );
+            })
+          ) : (
+            <span
+              className={`rounded-full px-3 py-1 text-xs ${accentSoft} ${accentText}`}
+              style={{
+                fontFamily:
+                  "var(--font-jetbrains), ui-monospace, monospace",
+                letterSpacing: "0.05em",
+              }}
+            >
+              {snippet.lang.toLowerCase()}
+            </span>
+          )}
           <span
             className="ml-auto text-[11px] text-ink-soft"
             style={{
@@ -721,8 +782,14 @@ function AnnotatedCode({
                 <span className="select-none text-right text-ink-soft/50 tabular-nums">
                   {lineNum}
                 </span>
-                {/* code */}
-                <span className="whitespace-pre text-ink">
+                {/* code — wrap long lines so they don't collide with the annotation column */}
+                <span
+                  className="text-ink min-w-0"
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                  }}
+                >
                   {line.tokens ?? "\u00A0"}
                 </span>
                 {/* annotation column (md+) */}
