@@ -4,8 +4,8 @@ import { motion, useReducedMotion } from "motion/react";
 import { fadeUp, staggerParent } from "@/lib/motion";
 import {
   HoverCodeReveal,
-  MCP_SNIPPETS,
-  SKILL_SNIPPETS,
+  MCP_REVEAL,
+  SKILL_REVEAL,
 } from "@/components/visuals/HoverCodeReveal";
 
 export function Hero() {
@@ -35,7 +35,7 @@ export function Hero() {
           <HoverCodeReveal
             label="Skills"
             ariaLabel="Skills — show code examples"
-            snippets={SKILL_SNIPPETS}
+            reveal={SKILL_REVEAL}
             accent="skill"
             align="left"
           />
@@ -45,7 +45,7 @@ export function Hero() {
           <HoverCodeReveal
             label={<em className="not-italic italic font-semibold">MCP</em>}
             ariaLabel="MCP — show code examples"
-            snippets={MCP_SNIPPETS}
+            reveal={MCP_REVEAL}
             accent="mcp"
             align="right"
             triggerClassName="text-skill"
@@ -63,7 +63,7 @@ export function Hero() {
           variants={fadeUp}
           className="mt-4 font-scribble text-base text-ink-soft/80"
         >
-          <span aria-hidden>↑</span> hover the words to peek at the code
+          <span aria-hidden>↑</span> hover to peek — click to expand
         </motion.div>
         <motion.div
           variants={fadeUp}
