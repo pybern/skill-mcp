@@ -2,6 +2,11 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { fadeUp, staggerParent } from "@/lib/motion";
+import {
+  HoverCodeReveal,
+  MCP_SNIPPETS,
+  SKILL_SNIPPETS,
+} from "@/components/visuals/HoverCodeReveal";
 
 export function Hero() {
   const reduce = useReducedMotion();
@@ -27,11 +32,24 @@ export function Hero() {
           variants={fadeUp}
           className="font-display font-medium leading-[0.95] tracking-tight text-ink text-[clamp(56px,11vw,144px)]"
         >
-          Skills
+          <HoverCodeReveal
+            label="Skills"
+            ariaLabel="Skills — show code examples"
+            snippets={SKILL_SNIPPETS}
+            accent="skill"
+            align="left"
+          />
           <span className="font-scribble text-mcp mx-2 md:mx-4 align-middle text-[0.7em]">
             ×
           </span>
-          <em className="not-italic text-skill italic font-semibold">MCP</em>
+          <HoverCodeReveal
+            label={<em className="not-italic italic font-semibold">MCP</em>}
+            ariaLabel="MCP — show code examples"
+            snippets={MCP_SNIPPETS}
+            accent="mcp"
+            align="right"
+            triggerClassName="text-skill"
+          />
         </motion.h1>
         <motion.p
           variants={fadeUp}
@@ -43,7 +61,13 @@ export function Hero() {
         </motion.p>
         <motion.div
           variants={fadeUp}
-          className="mt-16 font-mono text-xs uppercase tracking-[0.25em] text-ink-soft/70"
+          className="mt-4 font-scribble text-base text-ink-soft/80"
+        >
+          <span aria-hidden>↑</span> hover the words to peek at the code
+        </motion.div>
+        <motion.div
+          variants={fadeUp}
+          className="mt-12 font-mono text-xs uppercase tracking-[0.25em] text-ink-soft/70"
         >
           scroll ↓
         </motion.div>
