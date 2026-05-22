@@ -213,7 +213,19 @@ export function HoverCodeReveal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            style={{ transformOrigin: "top center" }}
+            // Reset all the typographic inheritance coming from the hero <h1>:
+            // serif font, italic, font-medium weight, tracking-tight letter
+            // spacing, and 0.95 line-height all need to stop here so the card
+            // and code can use their own settings.
+            style={{
+              transformOrigin: "top center",
+              fontFamily:
+                "var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif",
+              fontStyle: "normal",
+              fontWeight: 400,
+              letterSpacing: "normal",
+              lineHeight: 1.4,
+            }}
             className={`absolute top-full ${anchorClass} z-40 block pt-5`}
           >
             {/* Pointer tail */}
@@ -267,13 +279,23 @@ function CodeCard({ snippet }: { snippet: Snippet }) {
       </span>
       <span className="block overflow-x-auto px-3 py-2.5">
         <span
-          className="block whitespace-pre font-mono text-[11.5px] leading-[1.55] text-ink"
-          // The H1 sets italic on its inner em — make sure our code never inherits it.
-          style={{ fontStyle: "normal", fontWeight: 400 }}
+          className="block whitespace-pre text-ink"
+          // The hero <h1> sets `font-display`, `font-medium`, `tracking-tight`,
+          // and (on the inner <em>) `italic`. None of those should leak into
+          // the code block, so we pin every relevant text property inline.
+          style={{
+            fontFamily:
+              "var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace",
+            fontStyle: "normal",
+            fontWeight: 400,
+            fontSize: "12px",
+            lineHeight: 1.65,
+            letterSpacing: "0",
+          }}
         >
           {snippet.lines.map((line, i) => (
             <span key={i} className="block">
-              {line ?? " "}
+              {line ?? "\u00A0"}
             </span>
           ))}
         </span>
