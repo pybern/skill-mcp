@@ -331,17 +331,17 @@ export function HoverCodeReveal({
       ? { right: "1.75rem" }
       : { left: "50%", transform: "translateX(-50%)" };
 
+  // Click toggles the full modal. Hover/focus only previews the small popover.
+  const toggleExpanded = () => {
+    setExpanded((v) => !v);
+    setOpen(false);
+  };
+
   const onTriggerKey = (e: KeyboardEvent<HTMLSpanElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      setOpen((v) => !v);
+      toggleExpanded();
     }
-  };
-
-  const openExpanded = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpanded(true);
-    setOpen(false);
   };
 
   return (
@@ -351,7 +351,7 @@ export function HoverCodeReveal({
       onMouseLeave={() => setOpen(false)}
       onFocus={() => !expanded && setOpen(true)}
       onBlur={() => setOpen(false)}
-      onClick={() => setOpen((v) => !v)}
+      onClick={toggleExpanded}
     >
       <span
         role="button"
@@ -415,25 +415,19 @@ export function HoverCodeReveal({
                 ))}
               </span>
 
-              {/* Expand affordance */}
-              <button
-                type="button"
-                onClick={openExpanded}
-                onMouseDown={(e) => e.preventDefault()}
-                className="mt-2.5 flex w-full items-center justify-between rounded-md border border-rule bg-cream/50 px-2.5 py-1.5 text-left transition hover:bg-cream"
-                style={{
-                  fontFamily:
-                    "var(--font-inter), ui-sans-serif, system-ui, sans-serif",
-                  letterSpacing: "normal",
-                }}
-              >
+              {/* Hint: clicking the word itself opens the full breakdown */}
+              <span className="mt-2.5 flex items-center justify-between px-1">
                 <span className="text-[11px] text-ink-soft">
-                  Click to expand & explain
+                  click for the full breakdown
                 </span>
-                <span className={`text-[11px] font-medium ${accent === "mcp" ? "text-mcp" : "text-skill"}`}>
+                <span
+                  className={`text-[11px] font-medium ${
+                    accent === "mcp" ? "text-mcp" : "text-skill"
+                  }`}
+                >
                   open ↗
                 </span>
-              </button>
+              </span>
             </span>
           </motion.span>
         ) : null}

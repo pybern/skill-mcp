@@ -63,7 +63,7 @@ export function Hero() {
           variants={fadeUp}
           className="mt-4 font-scribble text-base text-ink-soft/80"
         >
-          <span aria-hidden>↑</span> hover to peek — click to expand
+          <span aria-hidden>↑</span> hover to peek — click for the breakdown
         </motion.div>
         <motion.div
           variants={fadeUp}
