@@ -13,6 +13,7 @@ import { Ex2McpFetch } from "@/components/slides/Ex2McpFetch";
 import { Ex3SkillGuides } from "@/components/slides/Ex3SkillGuides";
 import { Ex4Reason } from "@/components/slides/Ex4Reason";
 import { Ex5Deliver } from "@/components/slides/Ex5Deliver";
+import { FoodForThought } from "@/components/slides/FoodForThought";
 import { Takeaway } from "@/components/slides/Takeaway";
 
 const SECTIONS = [
@@ -26,6 +27,7 @@ const SECTIONS = [
   { id: "ex-3-skill", label: "Guide" },
   { id: "ex-4-reason", label: "Reason" },
   { id: "ex-5-deliver", label: "Deliver" },
+  { id: "food-for-thought", label: "Bonus" },
   { id: "takeaway", label: "Recap" },
 ];
 
@@ -56,6 +58,7 @@ export default function Home() {
         <Ex3SkillGuides />
         <Ex4Reason />
         <Ex5Deliver />
+        <FoodForThought />
         <Takeaway />
       </main>
     </>
