@@ -3,180 +3,254 @@
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 import { clsx } from "clsx";
-import { ROOMS, RULES, WINNER_ID, REQUEST, type Room } from "@/lib/rooms";
+import { ROOMS, REQUEST, WINNER_ID, type Room } from "@/lib/rooms";
 
-type Status = "ok" | "violates" | "winner";
+/**
+ * ReasoningGrid — the agent literally "thinking out loud."
+ *
+ * For each candidate room we render a small trace block:
+ *   → Ash    f5 · 4p · — · $18
+ *     [✗ remote → VC]
+ *     out — missing VC
+ *
+ * Blocks stream in sequentially when the slide enters view, giving the
+ * feel of an agent working through its checklist one room at a time.
+ */
 
-function evaluateRoom(r: Room): { status: Status; failedRule?: string; notes: string[] } {
-  const notes: string[] = [];
-  // Rule: VC required if remote attendees
-  if (REQUEST.remoteAttendees > 0 && !r.hasVc) {
-    return { status: "violates", failedRule: "vc", notes: ["no VC"] };
+type Verdict = "drop" | "skip" | "winner";
+
+type Check = {
+  ok: boolean;
+  label: string;
+  rule: "vc" | "floor" | "size" | "price";
+};
+
+type Trace = {
+  room: Room;
+  checks: Check[];
+  verdict: Verdict;
+  reason: string;
+};
+
+function evaluate(r: Room): Trace {
+  const checks: Check[] = [];
+
+  // 1) MUST: remote attendees ⇒ VC required.
+  if (REQUEST.remoteAttendees > 0) {
+    checks.push({
+      rule: "vc",
+      ok: r.hasVc,
+      label: r.hasVc ? "has VC" : "remote → VC",
+    });
+    if (!r.hasVc) {
+      return { room: r, checks, verdict: "drop", reason: "missing VC" };
+    }
   }
-  // Capacity must fit
-  if (r.capacity < REQUEST.size) {
-    return { status: "violates", failedRule: "size", notes: ["too small"] };
+
+  // 2) DEFAULT: floor 3.
+  checks.push({
+    rule: "floor",
+    ok: r.floor === 3,
+    label: r.floor === 3 ? "floor 3" : `floor ${r.floor}`,
+  });
+
+  // 3) PREFER: smallest fit.
+  const fits = r.capacity >= REQUEST.size;
+  const oversize = r.capacity > REQUEST.size + 2;
+  checks.push({
+    rule: "size",
+    ok: fits && !oversize,
+    label: !fits
+      ? "too small"
+      : oversize
+      ? `cap ${r.capacity} (oversized)`
+      : `fits ${REQUEST.size}`,
+  });
+
+  // 4) GUARD: ≤ $50/hr.
+  const priceOk = r.pricePerHour <= 50;
+  checks.push({
+    rule: "price",
+    ok: priceOk,
+    label: `$${r.pricePerHour}/hr`,
+  });
+
+  if (r.id === WINNER_ID) {
+    return { room: r, checks, verdict: "winner", reason: "all rules pass" };
   }
-  if (r.floor !== 3) notes.push("off-floor");
-  if (r.capacity > REQUEST.size + 2) notes.push("oversized");
-  return { status: r.id === WINNER_ID ? "winner" : "ok", notes };
+  if (!priceOk) {
+    return { room: r, checks, verdict: "skip", reason: "over $50 — needs confirm" };
+  }
+  return { room: r, checks, verdict: "drop", reason: "not the best fit" };
 }
+
+const VERDICT_STYLE: Record<Verdict, { label: string; chip: string; text: string }> = {
+  drop: {
+    label: "out",
+    chip: "bg-mcp/10 text-mcp border-mcp/30",
+    text: "text-mcp",
+  },
+  skip: {
+    label: "skip",
+    chip: "bg-rule text-ink-soft border-rule",
+    text: "text-ink-soft",
+  },
+  winner: {
+    label: "pick",
+    chip: "bg-accent/15 text-accent border-accent/40",
+    text: "text-accent",
+  },
+};
 
 export function ReasoningGrid() {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { amount: 0.5, once: false });
+  const inView = useInView(ref, { amount: 0.4, once: false });
   const reduce = useReducedMotion();
 
-  const evaluated = ROOMS.map((r) => ({ room: r, ...evaluateRoom(r) }));
+  const traces = ROOMS.map(evaluate);
 
   return (
     <div ref={ref} className="w-full max-w-[560px] mx-auto">
       <div className="relative rounded-2xl bg-paper border border-rule p-5 shadow-[0_18px_40px_-24px_rgba(43,38,32,0.18)]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3 pb-3 border-b border-rule">
           <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
             agent · reasoning
           </div>
           <div className="font-scribble text-lg text-mcp">thinking out loud…</div>
         </div>
 
-        {/* Two columns: rules on left, rooms on right */}
-        <div className="grid grid-cols-[1fr_1fr] gap-6 relative">
-          {/* Rules column */}
-          <div className="space-y-2">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-skill mb-1">
-              skill rules
-            </div>
-            {RULES.map((r, i) => (
-              <motion.div
-                key={r.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: -8 }}
-                transition={{ duration: 0.4, delay: 0.1 + i * 0.1 }}
-                className="rounded-md bg-skill-soft/50 border border-skill/15 px-2.5 py-1.5 text-[12px] text-ink-soft"
+        {/* Request summary */}
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+          transition={{ duration: 0.35 }}
+          className="mb-3 flex items-baseline gap-2 text-[12px] text-ink-soft"
+        >
+          <span className="font-scribble text-base text-ink-soft">ask:</span>
+          <span className="text-ink">
+            room for <span className="font-semibold">{REQUEST.size}</span> at{" "}
+            <span className="font-semibold">2pm</span> ·{" "}
+            <span className="font-semibold">{REQUEST.remoteAttendees} remote</span>
+          </span>
+        </motion.div>
+
+        {/* Per-room reasoning trace */}
+        <ol className="space-y-2.5">
+          {traces.map((t, i) => {
+            const style = VERDICT_STYLE[t.verdict];
+            const isWinner = t.verdict === "winner";
+            return (
+              <motion.li
+                key={t.room.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={
+                  inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }
+                }
+                transition={{
+                  duration: 0.45,
+                  delay: 0.15 + i * 0.35,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className={clsx(
+                  "relative rounded-lg border px-3 py-2",
+                  isWinner
+                    ? "bg-accent-soft/40 border-accent/50 shadow-[0_0_0_3px_rgba(217,164,65,0.12)]"
+                    : t.verdict === "drop"
+                    ? "bg-paper border-rule opacity-80"
+                    : "bg-paper border-rule",
+                )}
               >
-                <span className="font-mono text-[10px] text-skill mr-1.5">
-                  {r.kind}
-                </span>
-                {r.id === "vc"
-                  ? "remote → VC"
-                  : r.id === "floor"
-                  ? "floor = 3"
-                  : r.id === "size"
-                  ? "smallest fit"
-                  : "$/hr ≤ 50"}
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Rooms column */}
-          <div className="space-y-2">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-mcp mb-1">
-              mcp rooms
-            </div>
-            {evaluated.map((e, i) => {
-              const isViolates = e.status === "violates";
-              const isWinner = e.status === "winner";
-              return (
-                <motion.div
-                  key={e.room.id}
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={
-                    inView
-                      ? {
-                          opacity: isViolates ? 0.32 : 1,
-                          x: 0,
-                          scale: isWinner ? 1.02 : 1,
-                        }
-                      : { opacity: 0, x: 8 }
-                  }
-                  transition={{
-                    duration: 0.5,
-                    delay: 0.5 + i * 0.18,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className={clsx(
-                    "relative rounded-md border px-2.5 py-1.5 text-[12px] flex items-center justify-between",
-                    isWinner
-                      ? "bg-accent-soft/60 border-accent text-ink shadow-[0_0_0_3px_rgba(217,164,65,0.18)]"
-                      : isViolates
-                      ? "bg-paper border-rule text-ink-soft line-through decoration-mcp/60"
-                      : "bg-paper border-rule text-ink-soft",
-                  )}
-                >
-                  <span className="font-display italic font-semibold">
-                    {e.room.name}
-                  </span>
-                  <span className="font-mono text-[10px]">
-                    f{e.room.floor} · {e.room.capacity}p ·{" "}
-                    {e.room.hasVc ? "vc" : "—"} · ${e.room.pricePerHour}
-                  </span>
-                  {isWinner && !reduce && (
-                    <motion.span
-                      aria-hidden
-                      className="absolute -right-2 -top-2 inline-flex items-center justify-center h-6 w-6 rounded-full bg-accent text-cream font-mono text-[12px]"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 1.6, type: "spring", stiffness: 260, damping: 18 }}
+                {/* Room headline */}
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span
+                      className={clsx(
+                        "font-mono text-[11px]",
+                        isWinner ? "text-accent" : "text-ink-soft/70",
+                      )}
                     >
-                      ✓
-                    </motion.span>
-                  )}
-                  {isViolates && e.notes[0] && (
-                    <span className="absolute -right-1 top-1/2 -translate-y-1/2 translate-x-full ml-2 hidden md:inline font-scribble text-mcp text-sm whitespace-nowrap">
-                      {e.notes[0]}
+                      →
                     </span>
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
+                    <span className="font-display italic font-semibold text-ink text-[15px]">
+                      {t.room.name}
+                    </span>
+                    <span className="font-mono text-[10.5px] text-ink-soft truncate">
+                      f{t.room.floor} · {t.room.capacity}p ·{" "}
+                      {t.room.hasVc ? "vc" : "—"} · ${t.room.pricePerHour}
+                    </span>
+                  </div>
+                  <span
+                    className={clsx(
+                      "shrink-0 rounded-full border px-2 py-[1px] font-mono text-[9.5px] uppercase tracking-[0.12em]",
+                      style.chip,
+                    )}
+                  >
+                    {style.label}
+                  </span>
+                </div>
 
-          {/* Connecting lines (SVG overlay) */}
-          <svg
-            aria-hidden
-            className="absolute inset-0 pointer-events-none"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-          >
-            {evaluated.map((e, i) => {
-              const ruleIdx = RULES.findIndex(
-                (r) => r.id === (e.failedRule ?? (e.status === "winner" ? "floor" : "size")),
-              );
-              if (ruleIdx < 0) return null;
-              const y1 = 18 + ruleIdx * 16; // approx
-              const y2 = 18 + i * 16;
-              const color =
-                e.status === "violates" ? "var(--color-mcp)" : "var(--color-skill)";
-              return (
-                <motion.line
-                  key={e.room.id}
-                  x1={48}
-                  y1={y1}
-                  x2={52}
-                  y2={y2}
-                  stroke={color}
-                  strokeWidth={0.4}
-                  strokeDasharray="1.2 1.2"
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={
-                    inView
-                      ? { pathLength: 1, opacity: e.status === "winner" ? 0.9 : 0.35 }
-                      : { pathLength: 0, opacity: 0 }
-                  }
-                  transition={{ duration: 0.7, delay: 1 + i * 0.15 }}
-                />
-              );
-            })}
-          </svg>
-        </div>
+                {/* Check chips */}
+                <div className="mt-1.5 flex flex-wrap gap-1.5 pl-5">
+                  {t.checks.map((c, j) => (
+                    <span
+                      key={j}
+                      className={clsx(
+                        "inline-flex items-center gap-1 rounded-md border px-1.5 py-[1px] font-mono text-[10.5px]",
+                        c.ok
+                          ? "border-skill/30 bg-skill-soft/30 text-skill"
+                          : "border-mcp/30 bg-mcp-soft/40 text-mcp",
+                      )}
+                    >
+                      <span aria-hidden className="font-semibold">
+                        {c.ok ? "✓" : "✗"}
+                      </span>
+                      {c.label}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Verdict reason */}
+                <div className="mt-1.5 pl-5">
+                  <span
+                    className={clsx(
+                      "font-scribble text-[15px]",
+                      style.text,
+                    )}
+                  >
+                    {isWinner ? "→ " : ""}
+                    {t.reason}
+                  </span>
+                </div>
+
+                {/* Winner star */}
+                {isWinner && !reduce && (
+                  <motion.span
+                    aria-hidden
+                    initial={{ scale: 0, rotate: -20 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{
+                      delay: 0.15 + traces.length * 0.35 + 0.1,
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 16,
+                    }}
+                    className="absolute -right-2 -top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-cream font-mono text-[13px] shadow-[0_4px_10px_-4px_rgba(217,164,65,0.6)]"
+                  >
+                    ✓
+                  </motion.span>
+                )}
+              </motion.li>
+            );
+          })}
+        </ol>
 
         {/* Conclusion */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-          transition={{ duration: 0.5, delay: 1.9 }}
-          className="mt-5 flex items-center gap-2 pt-3 border-t border-rule"
+          transition={{ duration: 0.5, delay: 0.15 + traces.length * 0.35 + 0.2 }}
+          className="mt-4 flex items-center gap-2 pt-3 border-t border-rule"
         >
           <span className="font-scribble text-lg text-ink-soft">winner:</span>
           <span className="font-display italic font-semibold text-ink">

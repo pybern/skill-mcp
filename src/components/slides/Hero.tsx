@@ -2,6 +2,11 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { fadeUp, staggerParent } from "@/lib/motion";
+import {
+  HoverCodeReveal,
+  MCP_REVEAL,
+  SKILL_REVEAL,
+} from "@/components/visuals/HoverCodeReveal";
 
 export function Hero() {
   const reduce = useReducedMotion();
@@ -27,11 +32,27 @@ export function Hero() {
           variants={fadeUp}
           className="font-display font-medium leading-[0.95] tracking-tight text-ink text-[clamp(56px,11vw,144px)]"
         >
-          Skills
+          <HoverCodeReveal
+            label="Skills"
+            ariaLabel="Skills — show the SKILL.md spec"
+            reveal={SKILL_REVEAL}
+            accent="skill"
+            align="left"
+            // Skills = the playbook, hand-written prose → more cursive feel
+            triggerClassName="font-scribble font-medium text-[1.1em] leading-[0.85] align-baseline"
+          />
           <span className="font-scribble text-mcp mx-2 md:mx-4 align-middle text-[0.7em]">
             ×
           </span>
-          <em className="not-italic text-skill italic font-semibold">MCP</em>
+          <HoverCodeReveal
+            label="MCP"
+            ariaLabel="MCP — show code examples"
+            reveal={MCP_REVEAL}
+            accent="mcp"
+            align="right"
+            // MCP = the data pipe, a protocol → mono, code-like, tightly tracked
+            triggerClassName="font-mono font-bold tracking-[-0.04em] text-[0.88em] text-skill"
+          />
         </motion.h1>
         <motion.p
           variants={fadeUp}
@@ -43,7 +64,13 @@ export function Hero() {
         </motion.p>
         <motion.div
           variants={fadeUp}
-          className="mt-16 font-mono text-xs uppercase tracking-[0.25em] text-ink-soft/70"
+          className="mt-4 font-scribble text-base text-ink-soft/80"
+        >
+          <span aria-hidden>↑</span> hover to peek — click for the breakdown
+        </motion.div>
+        <motion.div
+          variants={fadeUp}
+          className="mt-12 font-mono text-xs uppercase tracking-[0.25em] text-ink-soft/70"
         >
           scroll ↓
         </motion.div>
