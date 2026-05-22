@@ -34,21 +34,24 @@ export function Hero() {
         >
           <HoverCodeReveal
             label="Skills"
-            ariaLabel="Skills — show code examples"
+            ariaLabel="Skills — show the SKILL.md spec"
             reveal={SKILL_REVEAL}
             accent="skill"
             align="left"
+            // Skills = the playbook, hand-written prose → more cursive feel
+            triggerClassName="font-scribble font-medium text-[1.1em] leading-[0.85] align-baseline"
           />
           <span className="font-scribble text-mcp mx-2 md:mx-4 align-middle text-[0.7em]">
             ×
           </span>
           <HoverCodeReveal
-            label={<em className="not-italic italic font-semibold">MCP</em>}
+            label="MCP"
             ariaLabel="MCP — show code examples"
             reveal={MCP_REVEAL}
             accent="mcp"
             align="right"
-            triggerClassName="text-skill"
+            // MCP = the data pipe, a protocol → mono, code-like, tightly tracked
+            triggerClassName="font-mono font-bold tracking-[-0.04em] text-[0.88em] text-skill"
           />
         </motion.h1>
         <motion.p
